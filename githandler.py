@@ -14,14 +14,6 @@ def merge(a, b):
     checkout = proc("git", "checkout", b).stderr.read().decode("utf-8")
     if len(checkout) and checkout.startswith("error:"):
         raise GitException(checkout)
-    '''merge = proc("git", "merge", "--squash", a).stderr.read().decode("utf-8")
-    if len(merge) and merge.startswith("merge:"):
-        raise GitException(merge)
-    status = proc("git", "status", "--short").stdout.read().decode("utf-8")
-    status_list = {item.split(' ')[1] : item.split(' ')[0] for item in status.split('\n')[:-1]}
-    for key in status_list:
-        if status_list[key] == "UD" : proc("git", "rm", key)
-        elif status_list[key] == "AA" or status_list[key] == "UU" : os.system("nano " + key)'''
     merge = proc("git", "merge", "--squash", "-s recursive", "-Xtheirs", a).stderr.read().decode("utf-8")
     if len(merge) and merge.startswith("error:"):
         raise GitException(merge)
