@@ -79,9 +79,6 @@ def revert(node):
         raise GitException(commit)
 
 def start(a, b):
-    '''
-    Starting function.
-    '''
     merge_commit = search_merge(a, b)
     if merge_commit:
         try:
