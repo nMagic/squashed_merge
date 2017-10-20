@@ -35,9 +35,9 @@ def merge(a, b):
 
 def search_merge(a, b):
     a_to_b = proc("git", "log", "--pretty=format:'%ci%n%h'", "--max-count=1",
-                  "--grep='Squashed merge from "+a+" into "+b+"'").stdout.read().decode("utf-8")
+                  "--grep='Squashed merge from "+a+" into "+b+"'", "--all").stdout.read().decode("utf-8")
     b_to_a = proc("git", "log", "--pretty=format:'%ci%n%h'", "--max-count=1",
-                  "--grep='Squashed merge from " + b + " into " + a + "'").stdout.read().decode("utf-8")
+                  "--grep='Squashed merge from " + b + " into " + a + "'", "--all").stdout.read().decode("utf-8")
     if len(b_to_a) == 0 and len(a_to_b) == 0:
         return False
     elif len(b_to_a) == 0:
