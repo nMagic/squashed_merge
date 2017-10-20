@@ -9,16 +9,25 @@ class GitException(Exception):
     pass
 
 def proc(*args):
+    '''
+    Execute process with args.
+    '''
     cmd = ''.join([str(item) + ' ' for item in args])
     return subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
 def merge(a, b):
+    '''
+    Merge branch a into branch b.
+    Step-by-step:
+        Move to destination branch with git checkout command.
+        Merge branches with git merge --squash command.
+        Check status list for determinate conflicts with git status --short command.
+        Call each conflict file for manual resolving with nano file command.
+        Commit merge with git commit -a -m 'Squashed merge from a into b'
+    '''
     checkout = proc("git", "checkout", b).stderr.read().decode("utf-8")
     if len(checkout) and checkout.startswith("error:"):
         raise GitException(checkout)
-    '''merge = proc("git", "merge", "--squash", "-s recursive", "-Xtheirs", a).stderr.read().decode("utf-8")
-    if len(merge) and merge.startswith("error:"):
-        raise GitException(merge)'''
     merge = proc("git", "merge", "--squash", a).stderr.read().decode("utf-8")
     if len(merge) and merge.startswith("merge:"):
         raise GitException(merge)
@@ -34,6 +43,9 @@ def merge(a, b):
         raise GitException(commit)
 
 def search_merge(a, b):
+    '''
+    Search and return last merge commit between branch a and branch b.
+    '''
     a_to_b = proc("git", "log", "--pretty=format:'%ci%n%h'", "--max-count=1",
                   "--grep='Squashed merge from "+a+" into "+b+"'", "--all").stdout.read().decode("utf-8")
     b_to_a = proc("git", "log", "--pretty=format:'%ci%n%h'", "--max-count=1",
@@ -48,9 +60,12 @@ def search_merge(a, b):
     a_to_b[0] = datetime.strptime(a_to_b[0][:-6], "%Y-%m-%d %H:%M:%S")
     b_to_a = b_to_a.split('\n')
     b_to_a[0] = datetime.strptime(b_to_a[0][:-6], "%Y-%m-%d %H:%M:%S")
-    return a_to_b[0] if a_to_b[0] > b_to_a[0] else b_to_a[0]
+    return a_to_b[1] if a_to_b[0] > b_to_a[0] else b_to_a[1]
 
 def revert(node):
+    '''
+    Revert merge commit with sha1-hash "node".
+    '''
     proc("git", "revert", node)
     status = proc("git", "status", "--short").stdout.read().decode("utf-8")
     status_list = {item.split(' ')[1]: item.split(' ')[0] for item in status.split('\n')[:-1]}
@@ -64,6 +79,9 @@ def revert(node):
         raise GitException(commit)
 
 def start(a, b):
+    '''
+    Starting function.
+    '''
     merge_commit = search_merge(a, b)
     if merge_commit:
         try:
@@ -81,3 +99,5 @@ if __name__ == "__main__":
        start(sys.argv[1], sys.argv[2])
     except GitException as ex:
         print(ex)
+    except IndexError as ex:
+        print("Arguments must be passed")
