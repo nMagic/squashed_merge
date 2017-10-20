@@ -1,5 +1,8 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
 import subprocess
 import os
+import sys
 from datetime import datetime
 
 class GitException(Exception):
@@ -7,16 +10,25 @@ class GitException(Exception):
 
 def proc(*args):
     cmd = ''.join([str(item) + ' ' for item in args])
-    print(cmd)
     return subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
 def merge(a, b):
     checkout = proc("git", "checkout", b).stderr.read().decode("utf-8")
     if len(checkout) and checkout.startswith("error:"):
         raise GitException(checkout)
-    merge = proc("git", "merge", "--squash", "-s recursive", "-Xtheirs", a).stderr.read().decode("utf-8")
+    '''merge = proc("git", "merge", "--squash", "-s recursive", "-Xtheirs", a).stderr.read().decode("utf-8")
     if len(merge) and merge.startswith("error:"):
+        raise GitException(merge)'''
+    merge = proc("git", "merge", "--squash", a).stderr.read().decode("utf-8")
+    if len(merge) and merge.startswith("merge:"):
         raise GitException(merge)
+    status = proc("git", "status", "--short").stdout.read().decode("utf-8")
+    status_list = {item.split(' ')[1]: item.split(' ')[0] for item in status.split('\n')[:-1]}
+    for key in status_list:
+        if status_list[key] == "UD":
+            proc("git", "rm", key)
+        elif status_list[key] == "AA" or status_list[key] == "UU":
+            os.system("nano " + key)
     commit = proc("git", "commit", "-a", "-m 'Squashed merge from "+a+" into "+b+"'").stderr.read().decode("utf-8")
     if len(commit):
         raise GitException(commit)
@@ -38,10 +50,34 @@ def search_merge(a, b):
     b_to_a[0] = datetime.strptime(b_to_a[0][:-6], "%Y-%m-%d %H:%M:%S")
     return a_to_b[0] if a_to_b[0] > b_to_a[0] else b_to_a[0]
 
-if __name__ == "__main__":
-    os.chdir("../git-test/")
+def revert(node):
+    proc("git", "revert", node)
+    status = proc("git", "status", "--short").stdout.read().decode("utf-8")
+    status_list = {item.split(' ')[1]: item.split(' ')[0] for item in status.split('\n')[:-1]}
+    for key in status_list:
+        if status_list[key] == "UD":
+            proc("git", "rm", key)
+        elif status_list[key] == "AA" or status_list[key] == "UU":
+            os.system("nano " + key)
+    commit = proc("git", "commit", "-a", "-m 'Delete squashed merge "+node+"'").stderr.read().decode("utf-8")
+    if len(commit):
+        raise GitException(commit)
+
+def start(a, b):
+    merge_commit = search_merge(a, b)
+    if merge_commit:
+        try:
+            revert(merge_commit)
+        except GitException:
+            raise
     try:
-       print(search_merge('KLM', 'XYZ'))
+        merge(a, b)
+    except GitException:
+        raise
+
+
+if __name__ == "__main__":
+    try:
+       start(sys.argv[1], sys.argv[2])
     except GitException as ex:
         print(ex)
-    #print(proc("git reset 14d600a --hard").stdout.read().decode("utf-8"))
